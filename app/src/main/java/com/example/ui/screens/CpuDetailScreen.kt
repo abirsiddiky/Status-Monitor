@@ -37,6 +37,9 @@ import com.example.ui.theme.ChartTempColor
 import com.example.util.FormatUtils
 import java.util.Locale
 
+private val CpuPercentYFormatter: (Float) -> String = { String.format(Locale.US, "%.0f%%", it) }
+private val CpuTempYFormatter: (Float) -> String = { String.format(Locale.US, "%.0f°C", it) }
+
 @Composable
 fun CpuDetailScreen(
     cpu: CpuStatus,
@@ -230,7 +233,7 @@ fun CpuDetailScreen(
                             lineColor = ChartCpuColor,
                             minY = 0f,
                             maxY = 100f,
-                            yLabelFormatter = { String.format(Locale.US, "%.0f%%", it) },
+                            yLabelFormatter = CpuPercentYFormatter,
                             currentValueLabel = FormatUtils.formatPercent(cpu.loadPercent)
                         )
                     }
@@ -257,7 +260,7 @@ fun CpuDetailScreen(
                                 lineColor = ChartTempColor,
                                 minY = 20f,
                                 maxY = 100f,
-                                yLabelFormatter = { String.format(Locale.US, "%.0f°C", it) },
+                                yLabelFormatter = CpuTempYFormatter,
                                 currentValueLabel = FormatUtils.formatTemperature(cpu.averageTemp)
                             )
                         }

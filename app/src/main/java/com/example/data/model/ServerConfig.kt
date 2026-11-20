@@ -1,5 +1,6 @@
 package com.example.data.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 import java.util.UUID
 
@@ -13,6 +14,7 @@ import java.util.UUID
  * @property port Port number the Status agent is listening on (default 9090).
  * @property path Optional URL subpath prefix (e.g. "status" or empty).
  */
+@Immutable
 @Serializable
 data class ServerConfig(
     val id: String = UUID.randomUUID().toString(),

@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -40,9 +41,14 @@ import com.example.ui.screens.StorageDetailScreen
 import com.example.ui.screens.SystemDetailScreen
 import com.example.ui.theme.AppThemeMode
 import com.example.ui.theme.StatusTheme
+import com.example.util.DisplayRefreshRateHelper
+import com.example.util.RefreshRateInfo
 import kotlinx.coroutines.awaitCancellation
 
 class MainActivity : ComponentActivity() {
+
+    private var lastHighRefreshRateEnabled: Boolean = true
+    private var lastReduceAnimations: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before super.onCreate
@@ -63,6 +69,22 @@ class MainActivity : ComponentActivity() {
             val dialogState by viewModel.dialogState.collectAsStateWithLifecycle()
 
             val lifecycleOwner = LocalLifecycleOwner.current
+            val refreshRateInfo = remember(this) {
+                DisplayRefreshRateHelper.getRefreshRateInfo(this)
+            }
+
+            // Apply high refresh rate preference reactively whenever settings change
+            val highRefreshEnabled = appState.settings.highRefreshRate
+            val reduceAnimations = appState.settings.reduceAnimations
+            LaunchedEffect(highRefreshEnabled, reduceAnimations) {
+                lastHighRefreshRateEnabled = highRefreshEnabled
+                lastReduceAnimations = reduceAnimations
+                DisplayRefreshRateHelper.applyRefreshRatePreference(
+                    activity = this@MainActivity,
+                    highRefreshRateEnabled = highRefreshEnabled,
+                    reduceAnimations = reduceAnimations
+                )
+            }
 
             // Lifecycle-aware background polling
             LaunchedEffect(lifecycleOwner) {
@@ -84,6 +106,7 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             appState = appState,
                             telemetry = telemetry,
+                            refreshRateInfo = refreshRateInfo,
                             showAddServerDialog = dialogState.first,
                             editingServer = dialogState.second
                         )
@@ -92,6 +115,16 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-apply preferred display mode on resume in case OEM ROMs reset window refresh rate
+        DisplayRefreshRateHelper.applyRefreshRatePreference(
+            activity = this,
+            highRefreshRateEnabled = lastHighRefreshRateEnabled,
+            reduceAnimations = lastReduceAnimations
+        )
+    }
 }
 
 @Composable
@@ -99,6 +132,7 @@ fun StatusAppNavigation(
     viewModel: StatusViewModel,
     appState: AppState,
     telemetry: TelemetryState,
+    refreshRateInfo: RefreshRateInfo,
     showAddServerDialog: Boolean,
     editingServer: ServerConfig?
 ) {
@@ -116,6 +150,16 @@ fun StatusAppNavigation(
         AppThemeMode.LIGHT -> false
     }
 
+    val onToggleTheme = remember(viewModel, isCurrentlyDark) {
+        { viewModel.toggleTheme(isCurrentlyDark) }
+    }
+    val onOpenAddServer = remember(viewModel) { { viewModel.openAddServerDialog() } }
+    val onCloseServerDialog = remember(viewModel) { { viewModel.closeServerDialog() } }
+    val onSaveServer = remember(viewModel) { { server: ServerConfig -> viewModel.saveServer(server) } }
+    val onSelectServer = remember(viewModel) { { serverId: String -> viewModel.setActiveServer(serverId) } }
+    val onRetry = remember(viewModel) { { viewModel.refreshNow() } }
+    val onNavigateBack = remember(navController) { { navController.popBackStack(); Unit } }
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -132,11 +176,11 @@ fun StatusAppNavigation(
 
             NoServerScreen(
                 settings = appState.settings,
-                onToggleTheme = { viewModel.toggleTheme(isCurrentlyDark) },
-                onOpenAddServer = { viewModel.openAddServerDialog() },
-                onCloseServerDialog = { viewModel.closeServerDialog() },
-                onSaveServer = { server -> viewModel.saveServer(server) },
-                onTestConnection = { server -> viewModel.testConnection(server) },
+                onToggleTheme = onToggleTheme,
+                onOpenAddServer = onOpenAddServer,
+                onCloseServerDialog = onCloseServerDialog,
+                onSaveServer = onSaveServer,
+                onTestConnection = viewModel::testConnection,
                 showAddServerDialog = showAddServerDialog,
                 editingServer = editingServer
             )
@@ -163,19 +207,19 @@ fun StatusAppNavigation(
                 settings = appState.settings,
                 showAddServerDialog = showAddServerDialog,
                 editingServer = editingServer,
-                onOpenAddServer = { viewModel.openAddServerDialog() },
-                onCloseServerDialog = { viewModel.closeServerDialog() },
-                onSaveServer = { server -> viewModel.saveServer(server) },
-                onTestConnection = { server -> viewModel.testConnection(server) },
-                onSelectServer = { serverId -> viewModel.setActiveServer(serverId) },
-                onToggleTheme = { viewModel.toggleTheme(isCurrentlyDark) },
-                onOpenSettings = { navController.navigate("settings") },
-                onRetry = { viewModel.refreshNow() },
-                onNavigateToCpu = { navController.navigate("cpu_detail") },
-                onNavigateToMemory = { navController.navigate("memory_detail") },
-                onNavigateToStorage = { navController.navigate("storage_detail") },
-                onNavigateToNetwork = { navController.navigate("network_detail") },
-                onNavigateToSystem = { navController.navigate("system_detail") }
+                onOpenAddServer = onOpenAddServer,
+                onCloseServerDialog = onCloseServerDialog,
+                onSaveServer = onSaveServer,
+                onTestConnection = viewModel::testConnection,
+                onSelectServer = onSelectServer,
+                onToggleTheme = onToggleTheme,
+                onOpenSettings = remember(navController) { { navController.navigate("settings") } },
+                onRetry = onRetry,
+                onNavigateToCpu = remember(navController) { { navController.navigate("cpu_detail") } },
+                onNavigateToMemory = remember(navController) { { navController.navigate("memory_detail") } },
+                onNavigateToStorage = remember(navController) { { navController.navigate("storage_detail") } },
+                onNavigateToNetwork = remember(navController) { { navController.navigate("network_detail") } },
+                onNavigateToSystem = remember(navController) { { navController.navigate("system_detail") } }
             )
         }
 
@@ -184,8 +228,8 @@ fun StatusAppNavigation(
                 cpu = telemetry.status?.cpu ?: CpuStatus(),
                 history = telemetry.history,
                 settings = appState.settings,
-                onNavigateBack = { navController.popBackStack() },
-                onToggleTheme = { viewModel.toggleTheme(isCurrentlyDark) }
+                onNavigateBack = onNavigateBack,
+                onToggleTheme = onToggleTheme
             )
         }
 
@@ -194,8 +238,8 @@ fun StatusAppNavigation(
                 memory = telemetry.status?.memory ?: MemoryStatus(),
                 history = telemetry.history,
                 settings = appState.settings,
-                onNavigateBack = { navController.popBackStack() },
-                onToggleTheme = { viewModel.toggleTheme(isCurrentlyDark) }
+                onNavigateBack = onNavigateBack,
+                onToggleTheme = onToggleTheme
             )
         }
 
@@ -204,8 +248,8 @@ fun StatusAppNavigation(
                 storage = telemetry.status?.storage ?: StorageStatus(),
                 history = telemetry.history,
                 settings = appState.settings,
-                onNavigateBack = { navController.popBackStack() },
-                onToggleTheme = { viewModel.toggleTheme(isCurrentlyDark) }
+                onNavigateBack = onNavigateBack,
+                onToggleTheme = onToggleTheme
             )
         }
 
@@ -214,8 +258,8 @@ fun StatusAppNavigation(
                 network = telemetry.status?.network ?: NetworkStatus(),
                 history = telemetry.history,
                 settings = appState.settings,
-                onNavigateBack = { navController.popBackStack() },
-                onToggleTheme = { viewModel.toggleTheme(isCurrentlyDark) }
+                onNavigateBack = onNavigateBack,
+                onToggleTheme = onToggleTheme
             )
         }
 
@@ -224,8 +268,8 @@ fun StatusAppNavigation(
                 host = telemetry.status?.host ?: HostStatus(),
                 processCount = telemetry.status?.memory?.processCount,
                 settings = appState.settings,
-                onNavigateBack = { navController.popBackStack() },
-                onToggleTheme = { viewModel.toggleTheme(isCurrentlyDark) }
+                onNavigateBack = onNavigateBack,
+                onToggleTheme = onToggleTheme
             )
         }
 
@@ -238,21 +282,24 @@ fun StatusAppNavigation(
                 servers = servers,
                 activeServerId = activeServerId,
                 settings = appState.settings,
+                refreshRateInfo = refreshRateInfo,
                 showAddServerDialog = showAddServerDialog,
                 editingServer = editingServer,
-                onNavigateBack = { navController.popBackStack() },
-                onToggleTheme = { viewModel.toggleTheme(isCurrentlyDark) },
-                onSelectActiveServer = { serverId -> viewModel.setActiveServer(serverId) },
-                onOpenAddServer = { viewModel.openAddServerDialog() },
-                onOpenEditServer = { server -> viewModel.openEditServerDialog(server) },
-                onCloseServerDialog = { viewModel.closeServerDialog() },
-                onSaveServer = { server -> viewModel.saveServer(server) },
-                onDeleteServer = { serverId -> viewModel.deleteServer(serverId) },
-                onTestConnection = { server -> viewModel.testConnection(server) },
-                onSetRefreshInterval = { seconds -> viewModel.setRefreshInterval(seconds) },
-                onSetReduceAnimations = { reduce -> viewModel.setReduceAnimations(reduce) },
-                onSetThemeMode = { mode -> viewModel.setThemeMode(mode) }
+                onNavigateBack = onNavigateBack,
+                onToggleTheme = onToggleTheme,
+                onSelectActiveServer = onSelectServer,
+                onOpenAddServer = onOpenAddServer,
+                onOpenEditServer = viewModel::openEditServerDialog,
+                onCloseServerDialog = onCloseServerDialog,
+                onSaveServer = onSaveServer,
+                onDeleteServer = viewModel::deleteServer,
+                onTestConnection = viewModel::testConnection,
+                onSetRefreshInterval = viewModel::setRefreshInterval,
+                onSetReduceAnimations = viewModel::setReduceAnimations,
+                onSetHighRefreshRate = viewModel::setHighRefreshRate,
+                onSetThemeMode = viewModel::setThemeMode
             )
         }
     }
 }
+

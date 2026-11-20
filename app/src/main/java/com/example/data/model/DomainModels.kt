@@ -90,7 +90,6 @@ fun parseTemperatures(el: JsonElement?): List<TempReading> {
             is JsonObject -> {
                 element.values.mapNotNull { it.asDoubleOrNull() }.filter { it in -50.0..200.0 }
             }
-            else -> emptyList()
         }
     }
 
@@ -247,18 +246,26 @@ data class ChartHistory(
         txRateVal: Float,
         maxPoints: Int = 60
     ): ChartHistory {
-        fun <T> List<T>.push(item: T): List<T> {
-            val list = if (size >= maxPoints) drop(size - maxPoints + 1) else this
-            return list + item
+        val cap = maxPoints.coerceAtLeast(2)
+
+        fun List<Float>.pushSample(item: Float): List<Float> {
+            val startIndex = if (size >= cap) size - cap + 1 else 0
+            val copyCount = (size - startIndex).coerceAtLeast(0)
+            val result = ArrayList<Float>(copyCount + 1)
+            for (i in startIndex until size) {
+                result.add(this[i])
+            }
+            result.add(item)
+            return result
         }
 
         return ChartHistory(
-            cpuLoad = cpuLoad.push(cpuLoadVal),
-            cpuTemp = if (cpuTempVal != null) cpuTemp.push(cpuTempVal) else cpuTemp,
-            memoryUsage = memoryUsage.push(memPercentVal),
-            storageInUse = if (storageInUseVal != null) storageInUse.push(storageInUseVal) else storageInUse,
-            networkRx = networkRx.push(rxRateVal),
-            networkTx = networkTx.push(txRateVal)
+            cpuLoad = cpuLoad.pushSample(cpuLoadVal),
+            cpuTemp = if (cpuTempVal != null) cpuTemp.pushSample(cpuTempVal) else cpuTemp,
+            memoryUsage = memoryUsage.pushSample(memPercentVal),
+            storageInUse = if (storageInUseVal != null) storageInUse.pushSample(storageInUseVal) else storageInUse,
+            networkRx = networkRx.pushSample(rxRateVal),
+            networkTx = networkTx.pushSample(txRateVal)
         )
     }
 }

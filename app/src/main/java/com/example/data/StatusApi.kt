@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import okhttp3.ConnectionPool
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
@@ -25,7 +27,15 @@ class StatusApi(
 ) {
     companion object {
         val defaultClient: OkHttpClient by lazy {
+            // Bounded dispatcher & compact connection pool reduce native thread stack
+            // and socket buffer footprint on 32-bit / low-RAM Android devices.
+            val dispatcher = Dispatcher().apply {
+                maxRequests = 4
+                maxRequestsPerHost = 2
+            }
             OkHttpClient.Builder()
+                .dispatcher(dispatcher)
+                .connectionPool(ConnectionPool(maxIdleConnections = 2, keepAliveDuration = 30, TimeUnit.SECONDS))
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .readTimeout(5, TimeUnit.SECONDS)
                 .callTimeout(7, TimeUnit.SECONDS)

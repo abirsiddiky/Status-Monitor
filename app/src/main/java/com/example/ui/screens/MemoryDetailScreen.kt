@@ -33,6 +33,8 @@ import com.example.ui.theme.ChartMemoryColor
 import com.example.util.FormatUtils
 import java.util.Locale
 
+private val MemoryPercentYFormatter: (Float) -> String = { String.format(Locale.US, "%.0f%%", it) }
+
 @Composable
 fun MemoryDetailScreen(
     memory: MemoryStatus,
@@ -170,7 +172,7 @@ fun MemoryDetailScreen(
                             lineColor = ChartMemoryColor,
                             minY = 0f,
                             maxY = 100f,
-                            yLabelFormatter = { String.format(Locale.US, "%.0f%%", it) },
+                            yLabelFormatter = MemoryPercentYFormatter,
                             currentValueLabel = FormatUtils.formatPercent(memory.usagePercent)
                         )
                     }

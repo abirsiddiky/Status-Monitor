@@ -6,19 +6,24 @@ import java.util.Locale
 
 object FormatUtils {
 
+    private val BYTE_UNITS = arrayOf("B", "KB", "MB", "GB", "TB", "PB")
+
+    private val TIME_FORMATTER: ThreadLocal<SimpleDateFormat> = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue(): SimpleDateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    }
+
     fun formatBytes(bytes: Double): String {
         if (bytes <= 0.0) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB", "TB", "PB")
         var value = bytes
         var unitIndex = 0
-        while (value >= 1024.0 && unitIndex < units.size - 1) {
+        while (value >= 1024.0 && unitIndex < BYTE_UNITS.size - 1) {
             value /= 1024.0
             unitIndex++
         }
         return if (value >= 100 || unitIndex == 0) {
-            String.format(Locale.US, "%.0f %s", value, units[unitIndex])
+            String.format(Locale.US, "%.0f %s", value, BYTE_UNITS[unitIndex])
         } else {
-            String.format(Locale.US, "%.1f %s", value, units[unitIndex])
+            String.format(Locale.US, "%.1f %s", value, BYTE_UNITS[unitIndex])
         }
     }
 
@@ -93,7 +98,7 @@ object FormatUtils {
 
     fun formatTime(timestamp: Long): String {
         if (timestamp <= 0L) return "Never"
-        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        return sdf.format(Date(timestamp))
+        val formatter = TIME_FORMATTER.get() ?: SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        return formatter.format(Date(timestamp))
     }
 }

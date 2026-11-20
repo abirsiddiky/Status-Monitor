@@ -10,6 +10,7 @@ import com.example.data.StatusRepository
 import com.example.data.TelemetryState
 import com.example.data.model.ServerConfig
 import com.example.ui.theme.AppThemeMode
+import com.example.util.DeviceOptimizer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +27,9 @@ class StatusViewModel(
 ) : AndroidViewModel(application) {
 
     private val serverStore: ServerStore = ServerStore(application)
-    private val repository: StatusRepository = StatusRepository()
+    private val repository: StatusRepository = StatusRepository(
+        maxHistoryPoints = DeviceOptimizer.recommendedChartPoints(application)
+    )
 
     /**
      * Single StateFlow exposing the unified AppState loaded in ONE DataStore read:
@@ -220,6 +223,12 @@ class StatusViewModel(
     fun setReduceAnimations(reduce: Boolean) {
         viewModelScope.launch {
             serverStore.setReduceAnimations(reduce)
+        }
+    }
+
+    fun setHighRefreshRate(enabled: Boolean) {
+        viewModelScope.launch {
+            serverStore.setHighRefreshRate(enabled)
         }
     }
 }

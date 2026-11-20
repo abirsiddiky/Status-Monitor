@@ -31,6 +31,14 @@ import com.example.ui.components.StatusTopAppBar
 import com.example.util.FormatUtils
 import java.util.Locale
 
+private val NetworkRateYFormatter: (Float) -> String = { kbit ->
+    if (kbit >= 1000f) {
+        String.format(Locale.US, "%.1f M", kbit / 1000f)
+    } else {
+        String.format(Locale.US, "%.0f K", kbit)
+    }
+}
+
 @Composable
 fun NetworkDetailScreen(
     network: NetworkStatus,
@@ -127,13 +135,7 @@ fun NetworkDetailScreen(
                         DualSmoothLineChart(
                             rxPoints = history.networkRx,
                             txPoints = history.networkTx,
-                            yLabelFormatter = { kbit ->
-                                if (kbit >= 1000f) {
-                                    String.format(Locale.US, "%.1f M", kbit / 1000f)
-                                } else {
-                                    String.format(Locale.US, "%.0f K", kbit)
-                                }
-                            }
+                            yLabelFormatter = NetworkRateYFormatter
                         )
                     }
                 }

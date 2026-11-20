@@ -1,6 +1,7 @@
 package com.example.data
 
 import android.content.Context
+import androidx.compose.runtime.Immutable
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -11,6 +12,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.data.model.ServerConfig
 import com.example.ui.theme.AppThemeMode
+import com.example.util.DeviceOptimizer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -20,12 +22,15 @@ import java.io.IOException
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "status_preferences")
 
+@Immutable
 data class AppSettings(
     val refreshIntervalSeconds: Int = 3,
     val reduceAnimations: Boolean = false,
+    val highRefreshRate: Boolean = true,
     val themeMode: AppThemeMode = AppThemeMode.SYSTEM
 )
 
+@Immutable
 data class ServerStoreSnapshot(
     val servers: List<ServerConfig>,
     val activeServerId: String?,
@@ -46,12 +51,21 @@ class ServerStore(private val context: Context) {
         val ACTIVE_SERVER_ID = stringPreferencesKey("active_server_id")
         val REFRESH_INTERVAL_SECONDS = intPreferencesKey("refresh_interval_seconds")
         val REDUCE_ANIMATIONS = booleanPreferencesKey("reduce_animations")
+        val HIGH_REFRESH_RATE = booleanPreferencesKey("high_refresh_rate")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+    }
+
+    private val defaultReduceAnimations: Boolean by lazy {
+        DeviceOptimizer.isLowRamDevice(context)
+    }
+
+    private val defaultHighRefreshRate: Boolean by lazy {
+        !DeviceOptimizer.isLowRamDevice(context)
     }
 
     /**
      * Reads everything needed for the first frame in ONE single DataStore read:
-     * server list, active server id, theme mode, refresh interval, reduce-animations.
+     * server list, active server id, theme mode, refresh interval, reduce-animations, high refresh rate.
      */
     val snapshotFlow: Flow<ServerStoreSnapshot> = context.dataStore.data
         .catch { exception ->
@@ -70,7 +84,8 @@ class ServerStore(private val context: Context) {
             }
             val activeId = prefs[PreferencesKeys.ACTIVE_SERVER_ID]
             val refresh = prefs[PreferencesKeys.REFRESH_INTERVAL_SECONDS] ?: 3
-            val reduceAnim = prefs[PreferencesKeys.REDUCE_ANIMATIONS] ?: false
+            val reduceAnim = prefs[PreferencesKeys.REDUCE_ANIMATIONS] ?: defaultReduceAnimations
+            val highRefresh = prefs[PreferencesKeys.HIGH_REFRESH_RATE] ?: defaultHighRefreshRate
             val themeStr = prefs[PreferencesKeys.THEME_MODE] ?: AppThemeMode.SYSTEM.name
             val themeMode = try {
                 AppThemeMode.valueOf(themeStr)
@@ -83,6 +98,7 @@ class ServerStore(private val context: Context) {
                 settings = AppSettings(
                     refreshIntervalSeconds = refresh,
                     reduceAnimations = reduceAnim,
+                    highRefreshRate = highRefresh,
                     themeMode = themeMode
                 )
             )
@@ -142,6 +158,12 @@ class ServerStore(private val context: Context) {
     suspend fun setReduceAnimations(reduce: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[PreferencesKeys.REDUCE_ANIMATIONS] = reduce
+        }
+    }
+
+    suspend fun setHighRefreshRate(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[PreferencesKeys.HIGH_REFRESH_RATE] = enabled
         }
     }
 

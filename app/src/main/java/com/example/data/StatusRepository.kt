@@ -1,5 +1,6 @@
 package com.example.data
 
+import androidx.compose.runtime.Immutable
 import com.example.data.model.ChartHistory
 import com.example.data.model.ServerConfig
 import com.example.data.model.ServerStatus
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+@Immutable
 data class TelemetryState(
     val isOnline: Boolean = false,
     val isLoading: Boolean = false,
@@ -19,7 +21,8 @@ data class TelemetryState(
 )
 
 class StatusRepository(
-    private val api: StatusApi = StatusApi()
+    private val api: StatusApi = StatusApi(),
+    private val maxHistoryPoints: Int = 60
 ) {
     private val _telemetryState = MutableStateFlow(TelemetryState())
     val telemetryState: StateFlow<TelemetryState> = _telemetryState.asStateFlow()
@@ -78,7 +81,8 @@ class StatusRepository(
                     memPercentVal = domainStatus.memory.usagePercent,
                     storageInUseVal = storageInUseBytes,
                     rxRateVal = rxRateKbit,
-                    txRateVal = txRateKbit
+                    txRateVal = txRateKbit,
+                    maxPoints = maxHistoryPoints
                 )
 
                 current.copy(

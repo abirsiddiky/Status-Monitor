@@ -17,6 +17,16 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // Explicitly include both 32-bit (armeabi-v7a, x86) and 64-bit (arm64-v8a, x86_64) ABIs
+    ndk {
+      abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+    }
+
+    // Avoid generating rasterized PNG fallbacks for vector drawables
+    vectorDrawables {
+      useSupportLibrary = true
+    }
   }
 
   signingConfigs {
@@ -58,6 +68,15 @@ android {
     includeInApk = false
     includeInBundle = true
   }
+  packaging {
+    resources {
+      excludes += setOf(
+        "/META-INF/{AL2.0,LGPL2.1}",
+        "DebugProbesKt.bin",
+        "kotlin-tooling-metadata.json"
+      )
+    }
+  }
 }
 
 secrets {
@@ -84,7 +103,7 @@ dependencies {
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.okhttp)
-  implementation(libs.logging.interceptor)
+  // implementation(libs.logging.interceptor) // Unused - commented out to minimize APK/DEX size on 32-bit devices
 
   testImplementation(libs.junit)
   testImplementation(libs.androidx.core)

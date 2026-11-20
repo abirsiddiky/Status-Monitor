@@ -48,20 +48,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.R
 import com.example.data.AppSettings
 import com.example.data.model.ServerConfig
 import com.example.ui.components.ServerDialog
 import com.example.ui.components.StatusTopAppBar
 import com.example.ui.theme.AppThemeMode
 import com.example.ui.theme.StatusOfflineRed
+import com.example.util.RefreshRateInfo
 
 @Composable
 fun SettingsScreen(
     servers: List<ServerConfig>,
     activeServerId: String?,
     settings: AppSettings,
+    refreshRateInfo: RefreshRateInfo,
     showAddServerDialog: Boolean,
     editingServer: ServerConfig?,
     onNavigateBack: () -> Unit,
@@ -75,6 +79,7 @@ fun SettingsScreen(
     onTestConnection: suspend (ServerConfig) -> com.example.data.ConnectionTestResult,
     onSetRefreshInterval: (Int) -> Unit,
     onSetReduceAnimations: (Boolean) -> Unit,
+    onSetHighRefreshRate: (Boolean) -> Unit,
     onSetThemeMode: (AppThemeMode) -> Unit
 ) {
     BackHandler(onBack = onNavigateBack)
@@ -247,6 +252,59 @@ fun SettingsScreen(
                             checked = settings.reduceAnimations,
                             onCheckedChange = onSetReduceAnimations,
                             modifier = Modifier.testTag("reduce_animations_switch")
+                        )
+                    }
+                }
+            }
+
+            // High Refresh Rate Switch (90Hz / 120Hz / 144Hz+)
+            item(key = "high_refresh_rate_card") {
+                val canToggleHighRefresh = refreshRateInfo.isHighRefreshRateSupported && !settings.reduceAnimations
+                val subtitle = when {
+                    !refreshRateInfo.isHighRefreshRateSupported -> stringResource(
+                        R.string.settings_high_refresh_rate_unsupported,
+                        refreshRateInfo.maxRefreshRateHz
+                    )
+                    settings.reduceAnimations -> stringResource(R.string.settings_high_refresh_rate_paused)
+                    else -> stringResource(
+                        R.string.settings_high_refresh_rate_supported,
+                        refreshRateInfo.maxRefreshRateHz
+                    )
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 12.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_high_refresh_rate),
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = settings.highRefreshRate && canToggleHighRefresh,
+                            onCheckedChange = onSetHighRefreshRate,
+                            enabled = canToggleHighRefresh,
+                            modifier = Modifier.testTag("high_refresh_rate_switch")
                         )
                     }
                 }

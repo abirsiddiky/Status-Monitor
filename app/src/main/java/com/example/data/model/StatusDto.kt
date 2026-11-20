@@ -1,5 +1,6 @@
 package com.example.data.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
@@ -17,6 +18,7 @@ data class StatusDto(
     val host: JsonElement? = null
 )
 
+@Immutable
 @Serializable
 data class CpuFrequencyDto(
     val now: Double? = null,

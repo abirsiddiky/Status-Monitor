@@ -45,6 +45,8 @@ import com.example.ui.theme.StatusOfflineRed
 import com.example.ui.theme.StatusWarningAmber
 import com.example.util.FormatUtils
 
+private val StorageBytesYFormatter: (Float) -> String = { FormatUtils.formatBytes(it.toDouble()) }
+
 @Composable
 fun StorageDetailScreen(
     storage: StorageStatus,
@@ -130,7 +132,7 @@ fun StorageDetailScreen(
                             SmoothLineChart(
                                 points = history.storageInUse,
                                 lineColor = ChartStorageColor,
-                                yLabelFormatter = { FormatUtils.formatBytes(it.toDouble()) },
+                                yLabelFormatter = StorageBytesYFormatter,
                                 currentValueLabel = storage.primaryVolume?.let {
                                     FormatUtils.formatBytes(it.inUseBytes)
                                 }

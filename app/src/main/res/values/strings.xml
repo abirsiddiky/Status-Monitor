@@ -21,6 +21,10 @@
     <string name="settings_preferences_section">Preferences</string>
     <string name="settings_refresh_interval">Refresh interval</string>
     <string name="settings_reduce_animations">Reduce animations</string>
+    <string name="settings_high_refresh_rate">High refresh rate</string>
+    <string name="settings_high_refresh_rate_supported">Use up to %1$d Hz for smoother scrolling and gauge animations.</string>
+    <string name="settings_high_refresh_rate_unsupported">Display runs at %1$d Hz. High refresh rate is not supported on this device.</string>
+    <string name="settings_high_refresh_rate_paused">Paused while Reduce animations is enabled.</string>
     <string name="settings_theme_mode">Theme</string>
     <string name="empty_servers_title">No servers configured</string>
     <string name="empty_servers_subtitle">Add your Status monitor server to start tracking system performance.</string>
